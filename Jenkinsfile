@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    options {
-        skipDefaultCheckout()
-    }
-
     environment {
         DOCKER_IMAGE = "ravoazanahary17/devops-app:latest"
     }
@@ -12,9 +8,12 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'git@github.com:Jeanchris-hub/devops-app.git',
-                    credentialsId: 'github-ssh'
+                // Checkout unique avec les credentials Git SSH
+                checkout([$class: 'GitSCM', 
+                          branches: [[name: '*/main']], 
+                          doGenerateSubmoduleConfigurations: false, 
+                          extensions: [], 
+                          userRemoteConfigs: [[url: 'git@github.com:Jeanchris-hub/devops-app.git', credentialsId: 'github-ssh']]])
             }
         }
 
@@ -39,11 +38,16 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    sh '''
-                      kubectl apply -f k8s/deployment.yaml
-                      kubectl apply -f k8s/service.yaml
-                      kubectl apply -f k8s/ingress.yaml
-                    '''
+                    withCredentials([string(credentialsId: 'kubeconfig-text', variable: 'KUBECONFIG_CONTENT')]) {
+                        sh '''
+                            mkdir -p $WORKSPACE/.kube
+                            echo "$KUBECONFIG_CONTENT" > $WORKSPACE/.kube/config
+                            export KUBECONFIG=$WORKSPACE/.kube/config
+                            kubectl apply -f k8s/deployment.yaml
+                            kubectl apply -f k8s/service.yaml
+                            kubectl apply -f k8s/ingress.yaml
+                        '''
+                    }
                 }
             }
         }
