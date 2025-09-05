@@ -5,6 +5,10 @@ pipeline {
         DOCKER_IMAGE = "ravoazanahary17/devops-app:latest"
     }
 
+    options {
+        skipDefaultCheckout()
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -28,7 +32,7 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    withDockerRegistry([ credentialsId: 'dockerhub', url: '' ]) {
+                    withDockerRegistry([credentialsId: 'dockerhub', url: '']) {
                         docker.image("${DOCKER_IMAGE}").push()
                     }
                 }
@@ -38,11 +42,10 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'kubeconfig-text', variable: 'KUBECONFIG_CONTENT')]) {
+                    // Utilisation du Secret File pour kubeconfig
+                    withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
                         sh '''
-                            mkdir -p $WORKSPACE/.kube
-                            echo "$KUBECONFIG_CONTENT" > $WORKSPACE/.kube/config
-                            export KUBECONFIG=$WORKSPACE/.kube/config
+                            echo "🛠 Déploiement sur Kubernetes..."
                             kubectl apply -f k8s/deployment.yaml
                             kubectl apply -f k8s/service.yaml
                             kubectl apply -f k8s/ingress.yaml
