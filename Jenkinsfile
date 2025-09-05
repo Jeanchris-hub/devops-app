@@ -42,20 +42,19 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Utilisation du Secret File pour kubeconfig
                     withCredentials([string(credentialsId: 'kubeconfig-text', variable: 'KUBECONFIG_CONTENT')]) {
-                        sh '''
+                    sh '''
                             mkdir -p $WORKSPACE/.kube
-                            echo "$KUBECONFIG_CONTENT" > $WORKSPACE/.kube/config
+                            printf "%s" "$KUBECONFIG_CONTENT" > $WORKSPACE/.kube/config
                             export KUBECONFIG=$WORKSPACE/.kube/config
                             kubectl apply -f k8s/deployment.yaml
                             kubectl apply -f k8s/service.yaml
                             kubectl apply -f k8s/ingress.yaml
                         '''
-                    }
-                }
             }
         }
+    }
+}
     }
 
     post {
