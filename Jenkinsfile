@@ -12,17 +12,21 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Checkout unique avec les credentials Git SSH
+                echo "📥 Checkout du code depuis GitHub"
                 checkout([$class: 'GitSCM', 
                           branches: [[name: '*/main']], 
                           doGenerateSubmoduleConfigurations: false, 
                           extensions: [], 
-                          userRemoteConfigs: [[url: 'git@github.com:Jeanchris-hub/devops-app.git', credentialsId: 'github-ssh']]])
+                          userRemoteConfigs: [[
+                              url: 'git@github.com:Jeanchris-hub/devops-app.git', 
+                              credentialsId: 'github-ssh'
+                          ]]])
             }
         }
 
         stage('Build Docker Image') {
             steps {
+                echo "🛠 Construction de l'image Docker"
                 script {
                     docker.build("${DOCKER_IMAGE}")
                 }
@@ -31,6 +35,7 @@ pipeline {
 
         stage('Push Docker Image') {
             steps {
+                echo "🚀 Push de l'image Docker vers Docker Hub"
                 script {
                     withDockerRegistry([credentialsId: 'dockerhub', url: '']) {
                         docker.image("${DOCKER_IMAGE}").push()
@@ -41,25 +46,33 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
+                echo "☸️ Déploiement sur Kubernetes"
                 withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
-                sh '''
-                    export KUBECONFIG=$KUBECONFIG_FILE
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl apply -f k8s/service.yaml
-                    kubectl apply -f k8s/ingress.yaml
-                '''
+                    script {
+                        sh '''
+                            export KUBECONFIG=$KUBECONFIG_FILE
+                            echo "✅ KUBECONFIG chargé : $KUBECONFIG"
+                            kubectl apply -f k8s/deployment.yaml
+                            kubectl apply -f k8s/service.yaml
+                            kubectl apply -f k8s/ingress.yaml
+                        '''
+                    }
                 }
             }
         }
-}
     }
 
     post {
         success {
-            echo "✅ Déploiement réussi !"
+            echo "🎉 Déploiement réussi !"
         }
         failure {
-            echo "❌ Erreur dans le pipeline."
+            echo "❌ Erreur dans le pipeline. Vérifie les logs."
+        }
+        always {
+            echo "🧹 Nettoyage si nécessaire"
+            // Si tu veux supprimer le kubeconfig temporaire :
+            sh 'rm -f $KUBECONFIG_FILE || true'
         }
     }
 }
