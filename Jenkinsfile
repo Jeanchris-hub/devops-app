@@ -42,15 +42,15 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'kubeconfig-text', variable: 'KUBECONFIG_CONTENT')]) {
-                    sh '''
-                            mkdir -p $WORKSPACE/.kube
-                            printf "%s" "$KUBECONFIG_CONTENT" > $WORKSPACE/.kube/config
-                            export KUBECONFIG=$WORKSPACE/.kube/config
-                            kubectl apply -f k8s/deployment.yaml
-                            kubectl apply -f k8s/service.yaml
-                            kubectl apply -f k8s/ingress.yaml
-                        '''
+                    withCredentials([string(credentialsId: 'kubeconfig-text', variable: 'KUBECONFIG_BASE64')]) {
+                sh '''
+                    mkdir -p $WORKSPACE/.kube
+                    echo "$KUBECONFIG_BASE64" | base64 --decode > $WORKSPACE/.kube/config
+                    export KUBECONFIG=$WORKSPACE/.kube/config
+                    kubectl apply -f k8s/deployment.yaml
+                    kubectl apply -f k8s/service.yaml
+                    kubectl apply -f k8s/ingress.yaml
+                '''
             }
         }
     }
