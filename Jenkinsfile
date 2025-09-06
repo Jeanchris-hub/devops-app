@@ -43,23 +43,7 @@ pipeline {
                 }
             }
         }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                echo "☸️ Déploiement sur Kubernetes"
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_FILE')]) {
-                    script {
-                        sh '''
-                            export KUBECONFIG=$KUBECONFIG_FILE
-                            echo "✅ KUBECONFIG chargé : $KUBECONFIG"
-                            kubectl apply -f k8s/deployment.yaml
-                            kubectl apply -f k8s/service.yaml
-                            kubectl apply -f k8s/ingress.yaml
-                        '''
-                    }
-                }
-            }
-        }
+        
     }
 
     post {
