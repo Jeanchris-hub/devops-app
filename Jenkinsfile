@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "ravoazanahary17/devops-app"
         VERSION = "${env.BUILD_ID}"
+        KUBECONFIG = "/home/chris/.kube/config"   // ton kubeconfig
     }
 
     options {
@@ -16,12 +17,12 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "📥 Checkout du code depuis GitHub"
-                checkout([$class: 'GitSCM', 
-                          branches: [[name: '*/main']], 
-                          doGenerateSubmoduleConfigurations: false, 
-                          extensions: [], 
+                checkout([$class: 'GitSCM',
+                          branches: [[name: '*/main']],
+                          doGenerateSubmoduleConfigurations: false,
+                          extensions: [],
                           userRemoteConfigs: [[
-                              url: 'git@github.com:Jeanchris-hub/devops-app.git', 
+                              url: 'git@github.com:Jeanchris-hub/devops-app.git',
                               credentialsId: 'github-ssh'
                           ]]])
             }
@@ -50,7 +51,6 @@ pipeline {
                 script {
                     def testImage = docker.image("${DOCKER_IMAGE}:${VERSION}")
                     testImage.inside {
-                        // Ajoutez vos commandes de test ici
                         sh 'echo "Running tests..."'
                     }
                 }
@@ -75,13 +75,30 @@ pipeline {
                 }
             }
         }
-   
-    }
 
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo "☸️ Déploiement sur Kubernetes"
+                script {
+                    // Correction des permissions du kubeconfig et des certificats minikube
+                    sh '''
+                        sudo chown -R $(whoami):$(whoami) ~/.minikube ~/.kube || true
+                        chmod -R u+rw ~/.minikube ~/.kube || true
+                    '''
+                    // Application des manifests
+                    sh '''
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                        kubectl apply -f k8s/ingress.yaml
+                    '''
+                }
+            }
+        }
+    }
 
     post {
         success {
-            echo "🎉 Déploiement réussi !"
+            echo "🎉 Pipeline réussi et application déployée !"
             archiveArtifacts artifacts: 'scan-report.json', onlyIfSuccessful: false
         }
         failure {
@@ -91,4 +108,5 @@ pipeline {
             echo "🧹 Nettoyage des conteneurs temporaires"
             sh 'docker system prune -f || true'
         }
-    }}
+    }
+}
