@@ -80,13 +80,14 @@ pipeline {
             steps {
                 echo "☸️ Déploiement sur Kubernetes"
                 script {
-                    // Correction des permissions du kubeconfig et des certificats minikube
-                    sh '''
+            s       h '''
+                        # Fix droits d'accès au kubeconfig
+                        sudo chown $(whoami):$(whoami) /home/chris/.kube/config || true
+                        chmod 600 /home/chris/.kube/config || true
                         sudo chown -R $(whoami):$(whoami) ~/.minikube ~/.kube || true
                         chmod -R u+rw ~/.minikube ~/.kube || true
-                    '''
-                    // Application des manifests
-                    sh '''
+
+                        # Déploiement
                         kubectl apply -f k8s/deployment.yaml
                         kubectl apply -f k8s/service.yaml
                         kubectl apply -f k8s/ingress.yaml
@@ -94,7 +95,7 @@ pipeline {
                 }
             }
         }
-    }
+
 
     post {
         success {
