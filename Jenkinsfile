@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "ravoazanahary17/devops-app"
         VERSION = "${env.BUILD_ID}"
-        KUBECONFIG = "/home/chris/.kube/config"   // ton kubeconfig
+        KUBECONFIG = "/var/lib/jenkins/.kube/config"
     }
 
     options {
@@ -17,12 +17,12 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "📥 Checkout du code depuis GitHub"
-                checkout([$class: 'GitSCM',
-                          branches: [[name: '*/main']],
-                          doGenerateSubmoduleConfigurations: false,
-                          extensions: [],
+                checkout([$class: 'GitSCM', 
+                          branches: [[name: '*/main']], 
+                          doGenerateSubmoduleConfigurations: false, 
+                          extensions: [], 
                           userRemoteConfigs: [[
-                              url: 'git@github.com:Jeanchris-hub/devops-app.git',
+                              url: 'git@github.com:Jeanchris-hub/devops-app.git', 
                               credentialsId: 'github-ssh'
                           ]]])
             }
@@ -77,30 +77,20 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-    steps {
-        echo "☸️ Déploiement sur Kubernetes"
-        script {
-            sh '''
-                sudo chown $(whoami):$(whoami) /home/chris/.kube/config || true
-                chmod 600 /home/chris/.kube/config || true
-                sudo chown -R $(whoami):$(whoami) ~/.minikube ~/.kube || true
-                chmod -R u+rw ~/.minikube ~/.kube || true
-
-                kubectl apply -f k8s/deployment.yaml
-                kubectl apply -f k8s/service.yaml
-                kubectl apply -f k8s/ingress.yaml
-
-                # attendre que le déploiement soit prêt
-                kubectl rollout status deployment/devops-app --timeout=60s
-            '''
+            steps {
+                echo "☸️ Déploiement sur Kubernetes"
+                sh '''
+                    kubectl apply -f k8s/deployment.yaml
+                    kubectl apply -f k8s/service.yaml
+                    kubectl apply -f k8s/ingress.yaml
+                '''
+            }
         }
-    }
-}
     }
 
     post {
         success {
-            echo "🎉 Pipeline réussi et application déployée !"
+            echo "🎉 Déploiement réussi !"
             archiveArtifacts artifacts: 'scan-report.json', onlyIfSuccessful: false
         }
         failure {
